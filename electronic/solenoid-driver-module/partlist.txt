@@ -1,3 +1,7 @@
 
 Power transistors:
 IRFR3806TRPBFCT-ND	
+
+Shit registers:
+568-1708-5-ND	HEF4894BT
+(12-bit sr)
