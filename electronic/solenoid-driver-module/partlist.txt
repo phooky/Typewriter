@@ -1,0 +1,3 @@
+
+Power transistors:
+IRFR3806TRPBFCT-ND	
