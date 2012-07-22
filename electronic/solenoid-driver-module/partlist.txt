@@ -1,8 +1,33 @@
+Shift registers (2):
+296-14858-1-ND	
 
-Power transistors:
+LEDs (3):
+475-1416-1-ND	
+
+330 ohm resistors (2):
+311-330ERCT-ND	
+
+15K ohm resistors (1):
+311-15KERCT-ND	
+
+1M ohm resistors (17):
+311-1.00MFRCT-ND	
+
+chip caps (2):
+490-1775-1-ND	
+
+electrolytic caps (1):
+PCE3915CT-ND	
+
+IDC connectors (2):
+OR909-ND	
+
+Board connectors (2):
+OR1001-ND	
+
+Diodes (12):
+RS1D-E3/61TGICT-ND	
+
+Power transistors (12):
 IRFR3806TRPBFCT-ND	
 
-Shit registers:
-568-1708-5-ND	HEF4894BT
-(12-bit sr)
-not a good candidate-- open-collector outputs
