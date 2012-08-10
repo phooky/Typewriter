@@ -61,7 +61,7 @@ void setup()
   cr_pwm=CR_PWM;
   cr_post_trigger=CR_POST_TRIGGER;
 
-  Serial.begin(19200); 
+  Serial.begin(9600); 
   Serial.println("TYPEWRONGER ready to wrong writes."); 
   offset = 0;
   pulselen = 50;
