@@ -41,6 +41,7 @@ const unsigned int pin_switch4 = 1;
 inline void pinMode(int pin, int mode, int value) {
   digitalWrite(pin,value);
   pinMode(pin,mode);
+  digitalWrite(pin,value);
 }
 
 void setPinDirections() {
@@ -138,6 +139,7 @@ char command_buffer[128];
 
 void doCommand(char* buf) {
   String cmd(buf);
+  cmd.trim(); // In-place in 1.0 and up
   if (cmd.equals("ping")) {
     Uart.println("OK v0.01");
   } else if (cmd.equals("mon")) {
@@ -148,14 +150,25 @@ void doCommand(char* buf) {
     setMotor(MOTOR_BRAKE); Uart.println("OK");
   } else if (cmd.equals("read")) {
     Uart.println(String(getSwitchState(),HEX));
+  } else {
+    Uart.println("ERR0 unrecognized command -" + cmd + "-");
   }
 }
 
 void loop() 
 {
-  int count = Uart.readBytesUntil('\n',command_buffer,127);
-  if (count > 0) {
-    command_buffer[count] = '\0';
+  int c = '\0';
+  int idx = 0;
+  do {
+    if (Uart.available() > 0) {
+      c = Uart.read();
+      command_buffer[idx++] = c;
+      if (idx > 127) idx = 127;
+    }
+  } while (c != '\r');
+  
+  if (idx > 1) {
+    command_buffer[idx] = '\0';
     doCommand(command_buffer);
   }
 }
