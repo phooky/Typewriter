@@ -47,7 +47,7 @@ inline void pinMode(int pin, int mode, int value) {
 void setPinDirections() {
   pinMode(pin_shift_clock, OUTPUT, LOW);
   pinMode(pin_register_clock, OUTPUT, LOW);
-  pinMode(pin_output_enable, OUTPUT, LOW);
+  pinMode(pin_output_enable, OUTPUT, HIGH);
   pinMode(pin_rx, OUTPUT, LOW);
   pinMode(pin_tx, OUTPUT, LOW);
   pinMode(pin_data1, OUTPUT, LOW);
@@ -104,13 +104,50 @@ uint8_t getSwitchState() {
   return state;
 }
 
+uint16_t bank[4];
+
+void clearBanks() {
+  bank[0] = bank[1] = bank[2] = bank[3] = 0;
+}
+
 void setup() 
 { 
+  clearBanks();
   setPinDirections();
+  writeSolenoids();
   Serial.begin(9600); 
   Serial.println("USB connection online."); 
   Uart.begin(9600); 
   Uart.println("Serial connection online."); 
+}
+
+void setSolenoid(int b, int r) {
+  bank[b] |= 0x01 << r;
+}
+
+inline void setIfBit(const uint16_t data, const uint8_t offset, const unsigned int pin) {
+  digitalWrite(pin, ((data && _BV(offset)) == 0)?LOW:HIGH);
+}
+
+void enableSolenoids() {
+  digitalWrite(pin_output_enable,LOW);
+}
+
+void disableSolenoids() {
+  digitalWrite(pin_output_enable,HIGH);
+}
+
+void writeSolenoids() {
+  for (int i = 15; i >= 0; i--) {
+    setIfBit(bank[0],i,pin_data1);
+    setIfBit(bank[1],i,pin_data2);
+    setIfBit(bank[2],i,pin_data3);
+    setIfBit(bank[3],i,pin_data4);
+    digitalWrite(pin_shift_clock,HIGH);
+    digitalWrite(pin_shift_clock,LOW);
+  }
+  digitalWrite(pin_register_clock,HIGH);
+  digitalWrite(pin_register_clock,LOW);
 }
 
 char command_buffer[128];
@@ -125,7 +162,7 @@ char command_buffer[128];
  *          string.
  * tBR    - Type character. 
  *          B = the number of the inductor board [0-3].
- *          R = the number (in hex) of the inductor to use [0-11].
+ *          R = the number (in hex) of the inductor to use [0-B].
  *          Returns "OK".
  * mon    - Turn motor on.
  *          Returns "OK".
@@ -150,8 +187,34 @@ void doCommand(char* buf) {
     setMotor(MOTOR_BRAKE); Uart.println("OK");
   } else if (cmd.equals("read")) {
     Uart.println(String(getSwitchState(),HEX));
+  } else if (cmd.startsWith("t")) {
+    char cbank = cmd[1];
+    char creg = cmd[2];
+    int bank = cbank - '0';
+    int reg;
+    if (bank < 0 || bank > 3) {
+      Uart.println("ERR1 bank out of range in "+cmd);
+      return;
+    }
+    if (creg <= '9' && creg >= '0') {
+      reg = creg - '0';
+    } else if (creg == 'a' || creg == 'A') {
+      reg = 10;
+    } else if (creg == 'b' || creg == 'B') {
+      reg = 11;
+    } else {
+      Uart.println("ERR2 register out of range in "+cmd);
+    }
+    clearBanks();
+    setSolenoid(bank,reg);
+    writeSolenoids();
+    enableSolenoids();
+    delay(100);
+    disableSolenoids();
+    clearBanks();
+    writeSolenoids();
   } else {
-    Uart.println("ERR0 unrecognized command -" + cmd + "-");
+    Uart.println("ERR0 unrecognized command " + cmd);
   }
 }
 
