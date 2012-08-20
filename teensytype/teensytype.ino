@@ -114,7 +114,7 @@ void setup()
 { 
   clearBanks();
   setPinDirections();
-  writeSolenoids();
+  writeSolenoids();  
   Serial.begin(9600); 
   Serial.println("USB connection online."); 
   Uart.begin(9600); 
@@ -126,7 +126,7 @@ void setSolenoid(int b, int r) {
 }
 
 inline void setIfBit(const uint16_t data, const uint8_t offset, const unsigned int pin) {
-  digitalWrite(pin, ((data && _BV(offset)) == 0)?LOW:HIGH);
+  digitalWrite(pin, ((data & _BV(offset)) == 0)?LOW:HIGH);
 }
 
 void enableSolenoids() {
@@ -204,6 +204,7 @@ void doCommand(char* buf) {
       reg = 11;
     } else {
       Uart.println("ERR2 register out of range in "+cmd);
+      return;
     }
     clearBanks();
     setSolenoid(bank,reg);
@@ -213,6 +214,8 @@ void doCommand(char* buf) {
     disableSolenoids();
     clearBanks();
     writeSolenoids();
+    delay(180);
+    Uart.println("OK");
   } else {
     Uart.println("ERR0 unrecognized command " + cmd);
   }
