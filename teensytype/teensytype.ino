@@ -120,6 +120,93 @@ uint8_t getSwitchState() {
  *
  */
 
+/*
+ * The character map. Entries are packed 8 bit values
+ * arranged as such:
+ * __________________________________________________
+ * |   7     6     5     4     3     2     1     0  |
+ * | shift | 0 |   b a n k  |    s o l e n o i d    |
+ */
+
+inline const uint8_t entry(
+  const bool shift,
+  const uint8_t bank,
+  const uint8_t solenoid)
+{
+  return (shift?0x80:0x00) | (bank << 4) | solenoid;
+}
+
+uint8_t keymap[128];
+
+void buildMap() {
+  for (uint8_t i = 0; i < 128; i++) {
+    keymap[i] = 0;
+  }
+
+  keymap['0'] = entry(false,0,0);
+  keymap['1'] = entry(false,2,9); // 1 is represented by 'l'
+  keymap['2'] = entry(false,0,4);
+  keymap['3'] = entry(false,0,5);
+  keymap['4'] = entry(false,0,3);
+  keymap['5'] = entry(false,0,6);
+  keymap['6'] = entry(false,0,2);
+  keymap['7'] = entry(false,0,7);
+  keymap['8'] = entry(false,0,1);
+  keymap['9'] = entry(false,0,8);
+
+  keymap['-'] = entry(false,0,9);
+  keymap[';'] = entry(false,2,0);
+  keymap[','] = entry(false,3,3);
+  keymap['/'] = entry(false,3,4);
+  keymap['.'] = entry(false,3,9);
+
+  keymap[' '] = entry(false,3,0xA);
+
+  keymap['a'] = entry(false,2,5);
+  keymap['b'] = entry(false,3,7);
+  keymap['c'] = entry(false,3,6);
+  keymap['d'] = entry(false,2,6);
+  keymap['e'] = entry(false,1,6);
+  keymap['f'] = entry(false,2,3);
+  keymap['g'] = entry(false,2,7);
+  keymap['h'] = entry(false,2,2);
+  keymap['i'] = entry(false,1,1);
+  keymap['j'] = entry(false,2,8);
+  keymap['k'] = entry(false,2,1);
+  keymap['l'] = entry(false,2,9);
+  keymap['m'] = entry(false,3,8);
+  keymap['n'] = entry(false,3,2);
+  keymap['o'] = entry(false,1,9);
+  keymap['p'] = entry(false,1,0);
+  keymap['q'] = entry(false,1,5);
+  keymap['r'] = entry(false,1,3);
+  keymap['s'] = entry(false,2,4);
+  keymap['t'] = entry(false,1,7);
+  keymap['u'] = entry(false,1,8);
+  keymap['v'] = entry(false,3,1);
+  keymap['w'] = entry(false,1,4);
+  keymap['x'] = entry(false,3,0);
+  keymap['y'] = entry(false,1,2);
+  keymap['z'] = entry(false,3,5);
+  // Set upper case
+  for (char c = 0; c < 26; c++) {
+    keymap[c+'A'] = keymap[c+'a'] | 0x80;
+  }
+
+  keymap['"'] = keymap['2'] | 0x80;
+  keymap['#'] = keymap['3'] | 0x80;
+  keymap['$'] = keymap['4'] | 0x80;
+  keymap['%'] = keymap['5'] | 0x80;
+  keymap['_'] = keymap['6'] | 0x80;
+  keymap['&'] = keymap['7'] | 0x80;
+  keymap['\''] = keymap['8'] | 0x80;
+  keymap['('] = keymap['9'] | 0x80;
+  keymap[')'] = keymap['0'] | 0x80;
+  keymap['*'] = keymap['-'] | 0x80;
+  keymap[':'] = keymap[';'] | 0x80;
+  keymap['?'] = keymap[','] | 0x80;
+}
+
 uint16_t bank[4];
 
 void clearBanks() {
@@ -131,6 +218,7 @@ void setup()
   clearBanks();
   setPinDirections();
   writeSolenoids();  
+  buildMap();
   Serial.begin(9600); 
   Serial.println("USB connection online."); 
   Uart.begin(9600); 
@@ -166,6 +254,29 @@ void writeSolenoids() {
   digitalWrite(pin_register_clock,LOW);
 }
 
+void typeKey(uint8_t c) {
+  uint8_t dat = keymap[c & 0x7F];
+  if (dat == 0) return;
+  bool shift = (dat & 0x80) != 0;
+  uint8_t bank = (dat >> 4) & 0x03;
+  uint8_t solenoid = dat & 0x0F;
+  clearBanks();
+  if (shift) {
+    setSolenoid(3,0xB);
+    writeSolenoids();
+    enableSolenoids();
+    delay(20);
+    disableSolenoids();
+  }
+  setSolenoid(bank,solenoid);
+  writeSolenoids();
+  enableSolenoids();
+  delay(80);
+  disableSolenoids();
+  clearBanks();
+  writeSolenoids();
+}
+
 char command_buffer[128];
 
 /*
@@ -176,7 +287,9 @@ char command_buffer[128];
  * ping   - Ping the board to see if we're connected.
  *          Returns "OK version" where "version" is an arbitrary version
  *          string.
- * tBR    - Type character. 
+ * TC     - Type character.
+ *          C = the character to type.
+ * tBR    - Type character by grid position. 
  *          B = the number of the inductor board [0-3].
  *          R = the number (in hex) of the inductor to use [0-B].
  *          Returns "OK".
@@ -203,6 +316,10 @@ void doCommand(char* buf) {
     setMotor(MOTOR_BRAKE); Uart.println("OK");
   } else if (cmd.equals("read")) {
     Uart.println(String(getSwitchState(),HEX));
+  } else if (cmd.startsWith("T")) {
+    char c = cmd[1];
+    typeKey(c);
+    Uart.println("OK");
   } else if (cmd.startsWith("t")) {
     char cbank = cmd[1];
     char creg = cmd[2];
