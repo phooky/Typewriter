@@ -104,6 +104,22 @@ uint8_t getSwitchState() {
   return state;
 }
 
+/*
+ * Bank -> key mapping
+ * This chart gives the function of each bank/solenoid pair.
+ * Unused values are indicated by a blank. Shift is SH, space
+ * is SP.
+ *
+ *             Solenoid
+ *        0  1  2  3  4  5  6  7  8  9  A  B  
+ *       _____________________________________
+ * B  0 | 0  8  6  4  2  3  5  7  9  -
+ * a  1 | p  i  y  r  w  q  e  t  u  o
+ * n  2 | ;  k  h  f  s  a  d  g  j  l
+ * k  3 | x  v  n  ,  /  z  c  b  m  . SP SH
+ *
+ */
+
 uint16_t bank[4];
 
 void clearBanks() {
