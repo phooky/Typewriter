@@ -266,6 +266,7 @@ void typeKey(uint8_t c) {
     writeSolenoids();
     enableSolenoids();
     delay(20);
+    if (c == ' ') { delay(20); }
     disableSolenoids();
   }
   setSolenoid(bank,solenoid);
@@ -278,6 +279,33 @@ void typeKey(uint8_t c) {
 }
 
 char command_buffer[128];
+
+/*
+ * Configurable delay between two characters. Ideally you should have
+ * a longer delay between keys that are closer together.
+ */
+void delayBetween(char last, char next) {
+  delay(100);
+}
+
+boolean doCarriageReturn() {
+  const static uint8_t ARM_SW = 1<<2;  
+  setMotor(MOTOR_ON);
+  delay(50);
+  int i; 
+  for (i = 0; i < 100; i++) {
+    delay(10);
+    if ((getSwitchState() & ARM_SW) == 0) {
+      break;
+    }
+  }
+  setMotor(MOTOR_OFF);
+  delay(5);
+  setMotor(MOTOR_BRAKE);
+  delay(500);
+  setMotor(MOTOR_OFF);
+  return i < 100;
+}
 
 /*
  * Command reference
@@ -301,6 +329,10 @@ char command_buffer[128];
  *          Returns "OK".
  * read   - Reads the value of the switches as a byte.
  *          Returns a single hexidecimal character.
+ * Wstr   - Write string. Terminated by a '\r' or '\n' character.
+ *          Types the entire string.
+ * cr     - Carriage return. Return platen to home position and
+ *          advance one line.
  */
 
 void doCommand(char* buf) {
@@ -314,6 +346,20 @@ void doCommand(char* buf) {
     setMotor(MOTOR_OFF); Uart.println("OK");
   } else if (cmd.equals("mbrake")) {
     setMotor(MOTOR_BRAKE); Uart.println("OK");
+  } else if (cmd.equals("cr")) {
+    if (doCarriageReturn()) {
+      Uart.println("OK");
+    } else {
+      Uart.println("ERR2 bad return");
+    }
+  } else if (cmd.startsWith("W")) {
+    char last = 0;
+    for (uint8_t i = 1; i < cmd.length(); i++) {
+      delayBetween(last,cmd[i]);
+      last = cmd[i];
+      typeKey(cmd[i]);
+    }
+    Uart.println("OK");
   } else if (cmd.equals("read")) {
     Uart.println(String(getSwitchState(),HEX));
   } else if (cmd.startsWith("T")) {
