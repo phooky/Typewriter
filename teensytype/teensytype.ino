@@ -219,9 +219,9 @@ void setup()
   setPinDirections();
   writeSolenoids();  
   buildMap();
-  Serial.begin(9600); 
+  Serial.begin(19200); 
   Serial.println("USB connection online."); 
-  Uart.begin(9600); 
+  Uart.begin(19200); 
   Uart.println("Serial connection online."); 
 }
 
@@ -265,17 +265,18 @@ void typeKey(uint8_t c) {
     setSolenoid(3,0xB);
     writeSolenoids();
     enableSolenoids();
-    delay(20);
-    if (c == ' ') { delay(20); }
+    delay(60);
     disableSolenoids();
   }
   setSolenoid(bank,solenoid);
   writeSolenoids();
   enableSolenoids();
-  delay(80);
+  delay(85);
+  if (c == ' ') { delay(20); }
   disableSolenoids();
   clearBanks();
   writeSolenoids();
+  delay(30);
 }
 
 char command_buffer[128];
