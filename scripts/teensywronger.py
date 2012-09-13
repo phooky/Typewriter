@@ -3,16 +3,15 @@
 import serial
 import time
 import random
-
+import sys
 
 ser = serial.Serial('/dev/ttyUSB0',19200)
 
-msg="WAll work and no play makes Jack a dull boy.\r"
 
-while True:
-    ser.write(msg)
+for line in iter(lambda:sys.stdin.readline(),''):
+    ser.write("W"+line.rstrip()+"\r")
     ser.flush()
-    ser.readline()
+    print(ser.readline() + " : "+line.rstrip())
     ser.write("cr\r")
     ser.flush()
     ser.readline()

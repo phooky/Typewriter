@@ -140,7 +140,7 @@ uint8_t keymap[128];
 
 void buildMap() {
   for (uint8_t i = 0; i < 128; i++) {
-    keymap[i] = 0;
+    keymap[i] = 0xFF;
   }
 
   keymap['0'] = entry(false,0,0);
@@ -207,6 +207,47 @@ void buildMap() {
   keymap['?'] = keymap[','] | 0x80;
 }
 
+/*
+ * The Time Kerning table: this is the order of the
+ * keybars from left to right on the typewriter. If
+ * characters are close together, they will require
+ * extra time between keystrokes to avoid jamming.
+ */
+
+char* key_order = "qaz2wsx3edc4rfv5tgb6yhn7ujm8ik,9ol.0p;/-";
+// Map of solenoid table entries to key position
+uint8_t key_position[127];
+
+void buildPositions() {
+  for (int i = 0; i < 127; i++) {
+    key_position[i] = 0;
+  }
+  char* key = key_order;
+  int pos = 1;
+  while (*key != '\0') {
+    key_position[(keymap[*key] & 0x7F)] = pos;
+    key++;
+    pos++;
+  }
+}
+
+uint16_t kernTime(uint8_t first, uint8_t second) {
+  if (first == ' ' or second == ' ') return 105;
+  uint8_t posA = key_position[keymap[first] & 0x7F];
+  uint8_t posB = key_position[keymap[second] & 0x7F];
+  //Uart.print("KT: A is ");
+  //Uart.print(posA, DEC);
+  //Uart.print(", B is ");
+  //Uart.println(posB, DEC);
+  if (posA == 0 or posB == 0) return 0;
+  uint8_t diff;
+  if (posA > posB) { diff = posA - posB; } else { diff = posB - posA; }
+  if (diff > 16) return 0;
+  //Uart.print("Diff is ");
+  //Uart.println(diff, DEC);
+  return (16 - diff) * 6;
+}
+
 uint16_t bank[4];
 
 void clearBanks() {
@@ -219,6 +260,7 @@ void setup()
   setPinDirections();
   writeSolenoids();  
   buildMap();
+  buildPositions();
   Serial.begin(19200); 
   Serial.println("USB connection online."); 
   Uart.begin(19200); 
@@ -254,28 +296,46 @@ void writeSolenoids() {
   digitalWrite(pin_register_clock,LOW);
 }
 
+uint8_t previous_char;
+bool shift_state;
+
+void setShift(bool shift) {
+  if (shift_state != shift) {
+    if (shift) {
+      setSolenoid(3,0xB);
+    }
+    writeSolenoids();
+    enableSolenoids();
+    delay(160);
+    if (!shift) {
+      // There's a lot of bounce coming out of shift!
+      delay(50);
+    }
+    disableSolenoids();
+  }
+  if (shift) setSolenoid(3,0xB);
+  shift_state = shift;
+}
+
 void typeKey(uint8_t c) {
   uint8_t dat = keymap[c & 0x7F];
-  if (dat == 0) return;
+  if (dat == 0xFF) return;
   bool shift = (dat & 0x80) != 0;
   uint8_t bank = (dat >> 4) & 0x03;
   uint8_t solenoid = dat & 0x0F;
   clearBanks();
-  if (shift) {
-    setSolenoid(3,0xB);
-    writeSolenoids();
-    enableSolenoids();
-    delay(60);
-    disableSolenoids();
-  }
+  setShift(shift);  
   setSolenoid(bank,solenoid);
+  disableSolenoids();
   writeSolenoids();
   enableSolenoids();
-  delay(85);
-  if (c == ' ') { delay(20); }
+  delay(75);
+  if (c == ' ') { delay(35); }
   disableSolenoids();
   clearBanks();
+  if (shift) setSolenoid(3,0xB);
   writeSolenoids();
+  enableSolenoids();
   delay(30);
 }
 
@@ -285,17 +345,16 @@ char command_buffer[128];
  * Configurable delay between two characters. Ideally you should have
  * a longer delay between keys that are closer together.
  */
-void delayBetween(char last, char next) {
-  delay(100);
+void delayBetween(uint8_t last, uint8_t next) {
+  delay(kernTime(last,next) + 55);
 }
 
 boolean doCarriageReturn() {
   const static uint8_t ARM_SW = 1<<2;  
   setMotor(MOTOR_ON);
   delay(50);
-  int i; 
-  for (i = 0; i < 100; i++) {
-    delay(10);
+  uint32_t i; 
+  for (i = 0; i < 160000UL; i++) {
     if ((getSwitchState() & ARM_SW) == 0) {
       break;
     }
@@ -303,9 +362,9 @@ boolean doCarriageReturn() {
   setMotor(MOTOR_OFF);
   delay(5);
   setMotor(MOTOR_BRAKE);
-  delay(500);
+  delay(200);
   setMotor(MOTOR_OFF);
-  return i < 100;
+  return i < 160000UL;
 }
 
 /*
@@ -360,6 +419,8 @@ void doCommand(char* buf) {
       last = cmd[i];
       typeKey(cmd[i]);
     }
+    disableSolenoids();
+    setShift(false);
     Uart.println("OK");
   } else if (cmd.equals("read")) {
     Uart.println(String(getSwitchState(),HEX));
