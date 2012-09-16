@@ -309,7 +309,7 @@ void setShift(bool shift) {
     delay(160);
     if (!shift) {
       // There's a lot of bounce coming out of shift!
-      delay(50);
+      delay(150);
     }
     disableSolenoids();
   }
