@@ -6,6 +6,7 @@ import random
 import sys
 import os.path
 import os
+import logging
 
 preparedPath = "~/prepared-doc.txt"
 tempPath = "~/temp-doc.txt"
@@ -15,18 +16,17 @@ def checkSwitch(ser):
     ser.flush()
     status = ser.readline().strip()
     status = int(status,16)
-    print("Switch status : {0:04b}".format(status))
+    logging.debug("Switch status : {0:04b}".format(status))
     return (status & (1<<3)) != 0
 
 def printFile(ser,f):
     for line in iter(lambda:f.readline(),''):
         ser.write("W"+line.rstrip()+"\r")
         ser.flush()
-        print(ser.readline().rstrip() + " : "+line.rstrip())
+        logging.debug(ser.readline().rstrip() + " : "+line.rstrip())
         ser.write("cr\r")
         ser.flush()
         ser.readline()
-    print "Done."
     
 def runConnection(ser):
     while 1:
@@ -34,7 +34,7 @@ def runConnection(ser):
             time.sleep(0.1)
             try:
                 tp = open(os.path.expanduser(tempPath))
-                print("Printing temp file")
+                logging.debug("Printing temp file")
                 printFile(ser,tp)
                 os.unlink(os.path.expanduser(tempPath))
             except IOError as e:
@@ -53,6 +53,6 @@ while 1:
     except serial.SerialException as e:
         if ser != 0:
             ser.close
-        print "Couldn't open /dev/ttyUSB0; trying again in 3 seconds."
+        logging.info("Couldn't open /dev/ttyUSB0; trying again in 3 seconds.")
         time.sleep(3)
     ser = 0
