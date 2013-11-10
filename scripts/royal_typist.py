@@ -1,32 +1,46 @@
-#!/usr/bin/python
+#!/usr/bin/python -u
 
 import serial
 import time
 import random
 import sys
 import os.path
+import os
 
-def waitForSwitch(ser):
-    status = 0
-    while (status & (1<<3)) == 0:
-        ser.write("read\r")
+preparedPath = "~/prepared-doc.txt"
+tempPath = "~/temp-doc.txt"
+
+def checkSwitch(ser):
+    ser.write("read\r")
+    ser.flush()
+    status = ser.readline().strip()
+    status = int(status,16)
+    print("Switch status : {0:04b}".format(status))
+    return (status & (1<<3)) != 0
+
+def printFile(ser,f):
+    for line in iter(lambda:f.readline(),''):
+        ser.write("W"+line.rstrip()+"\r")
         ser.flush()
-        status = ser.readline().strip()
-        status = int(status,16)
-        print("Switch status : {0:04b}".format(status))
-        time.sleep(0.1)
+        print(ser.readline().rstrip() + " : "+line.rstrip())
+        ser.write("cr\r")
+        ser.flush()
+        ser.readline()
+    print "Done."
     
 def runConnection(ser):
     while 1:
-        waitForSwitch(ser)
-        f = open(os.path.expanduser("~/prepared-doc.txt"))
-        for line in iter(lambda:f.readline(),''):
-            ser.write("W"+line.rstrip()+"\r")
-            ser.flush()
-            print(ser.readline().rstrip() + " : "+line.rstrip())
-            ser.write("cr\r")
-            ser.flush()
-            ser.readline()
+        while not checkSwitch(ser):
+            time.sleep(0.1)
+            try:
+                tp = open(os.path.expanduser(tempPath))
+                print("Printing temp file")
+                printFile(ser,tp)
+                os.unlink(os.path.expanduser(tempPath))
+            except IOError as e:
+                pass
+        f = open(os.path.expanduser(preparedPath))
+        printFile(ser,f)
         time.sleep(5)
 
 
