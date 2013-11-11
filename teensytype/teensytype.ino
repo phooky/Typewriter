@@ -245,7 +245,7 @@ uint16_t kernTime(uint8_t first, uint8_t second) {
   if (diff > 16) return 0;
   //Uart.print("Diff is ");
   //Uart.println(diff, DEC);
-  return (16 - diff) * 6;
+  return (16 - diff) * 10;
 }
 
 uint16_t bank[4];
@@ -329,14 +329,15 @@ void typeKey(uint8_t c) {
   disableSolenoids();
   writeSolenoids();
   enableSolenoids();
-  delay(75);
+  delay(35);
+  if (bank == 3) { delay(10); }
   if (c == ' ') { delay(35); }
   disableSolenoids();
   clearBanks();
   if (shift) setSolenoid(3,0xB);
   writeSolenoids();
   enableSolenoids();
-  delay(30);
+  delay(70);
 }
 
 char command_buffer[128];
