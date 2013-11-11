@@ -11,13 +11,19 @@ import logging
 preparedPath = "~/prepared-doc.txt"
 tempPath = "~/temp-doc.txt"
 
+logging.basicConfig()
+
 def checkSwitch(ser):
     ser.write("read\r")
     ser.flush()
     status = ser.readline().strip()
-    status = int(status,16)
-    logging.debug("Switch status : {0:04b}".format(status))
-    return (status & (1<<3)) != 0
+    try:
+        status = int(status,16)
+        logging.debug("Switch status : {0:04b}".format(status))
+        return (status & (1<<3)) != 0
+    except ValueError:
+        # debug message
+        return False
 
 def printFile(ser,f):
     for line in iter(lambda:f.readline(),''):
