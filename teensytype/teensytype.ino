@@ -306,7 +306,7 @@ void setShift(bool shift) {
     }
     writeSolenoids();
     enableSolenoids();
-    delay(160);
+    delay(170);
     if (!shift) {
       // There's a lot of bounce coming out of shift!
       delay(150);
@@ -318,6 +318,7 @@ void setShift(bool shift) {
 }
 
 void typeKey(uint8_t c) {
+  delay(100);
   uint8_t dat = keymap[c & 0x7F];
   if (dat == 0xFF) return;
   bool shift = (dat & 0x80) != 0;
@@ -329,15 +330,15 @@ void typeKey(uint8_t c) {
   disableSolenoids();
   writeSolenoids();
   enableSolenoids();
-  delay(35);
+  delay(45);
   if (bank == 3) { delay(10); }
-  if (c == ' ') { delay(35); }
+  if (c == ' ') { delay(45); }
   disableSolenoids();
   clearBanks();
   if (shift) setSolenoid(3,0xB);
   writeSolenoids();
   enableSolenoids();
-  delay(70);
+  delay(100);
 }
 
 char command_buffer[128];
@@ -365,6 +366,7 @@ boolean doCarriageReturn() {
   setMotor(MOTOR_BRAKE);
   delay(200);
   setMotor(MOTOR_OFF);
+  delay(100);
   return i < 160000UL;
 }
 
