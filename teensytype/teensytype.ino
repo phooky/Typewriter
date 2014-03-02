@@ -95,13 +95,26 @@ enum {
   SW_4 = 0x08
 };
 
-uint8_t getSwitchState() {
+uint8_t getSwitchStateRaw() {
   uint8_t state = 0;
   if (digitalRead(pin_switch1) == HIGH) state |= SW_1;
   if (digitalRead(pin_switch2) == HIGH) state |= SW_2;
   if (digitalRead(pin_switch3) == HIGH) state |= SW_3;
   if (digitalRead(pin_switch4) == HIGH) state |= SW_4;
   return state;
+}
+
+uint8_t getSwitchState() {
+  // Debounce switch state
+  uint8_t state = getSwitchStateRaw();
+  uint8_t agrees = 0;
+  while (agrees < 5) {
+    uint8_t candidate = getSwitchStateRaw();
+    if (candidate == state) { agrees++; }
+    else {
+      state = candidate; agrees = 0;
+    }
+  }
 }
 
 /*
@@ -354,7 +367,7 @@ void delayBetween(uint8_t last, uint8_t next) {
 boolean doCarriageReturn() {
   const static uint8_t ARM_SW = 1<<2;  
   setMotor(MOTOR_ON);
-  delay(50);
+  delay(150);
   uint32_t i; 
   for (i = 0; i < 160000UL; i++) {
     if ((getSwitchState() & ARM_SW) == 0) {
